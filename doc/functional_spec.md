@@ -19,7 +19,6 @@ The ChessEngine stores the following as application state:
   * A flag representing whether the white king has moved
   * A flag representing whether the black-king has moved
   * A flag stating whether its white or black's move
-  * A representation of the last move (needed for en-passant checking).
 
 Overview
 --------
@@ -61,4 +60,139 @@ Validation Responsibilities:
 
 Reading Chess Notation
 ----------------------
+
+;; How it works?
+
+Input Chess Notation
+
+Chess notation is fed through the parse validation function
+
+This function calls validation functions to determine whether a given move is legal given the current application state. If the move is indeed legal, a hash representing a move is returned. 
+
+The hash contains
+
+{
+ :end-pos
+ :start-pos
+ :piece   
+}
+
+This can be passed to a move function, which just performs the move by generating a new move structure and pushing it onto the stack. 
+
+Top level API:
+
+(move [move app-state]
+      [move])
+
+Returns a new app-state
+
+(moves app-state move1 move2 move3)
+
+Returns an app state that results after the sequence of provided moves has been made.
+
+(test-moves move1 move2 move3)
+
+Returns a board, used for testing purposes
+
+(move (move (move 1 :e4) :e5) :nc3)
+
+Examples progression of application state through a series of moves:
+
+
+Initial state:
+--------------
+'({
+          :board [[:br :bn :bb :bq :bk :bb :bn :br]
+                  [:bp :bp :bp :bp :bp :bp :bp :bp]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
+                  [:wp :wp :wp :wp :wp :wp :wp :wp]
+                  [:wr :wn :wb :wq :wk :wb :wn :wr]],
+          :white-king-moved false,
+          :black-king-moved false,
+          :turn :white
+          :prev-move nil
+          }))
+
+Application state after :e4:
+----------------------------
+
+'(
+  {
+   :board [[:br :bn :bb :bq :bk :bb :bn :br]
+           [:bp :bp :bp :bp :bp :bp :bp :bp]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:ee :ee :ee :ee :wp :ee :ee :ee]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:wp :wp :wp :wp :ee :wp :wp :wp]
+           [:wr :wn :wb :wq :wk :wb :wn :wr]],
+   :white-king-moved false,
+   :black-king-moved false,
+   :turn :black
+   :prev-move :e4
+   },
+  {
+   :board [[:br :bn :bb :bq :bk :bb :bn :br]
+           [:bp :bp :bp :bp :ee :bp :bp :bp]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:ee :ee :ee :ee :bp :ee :ee :ee]
+           [:wp :wp :wp :wp :wp :wp :wp :wp]
+           [:wr :wn :wb :wq :wk :wb :wn :wr]],
+   :white-king-moved false,
+   :black-king-moved false,
+   :turn :white
+   :prev-move nil
+   }))
+
+Application state after :e4 :e5
+----------------------------
+'(
+  {
+   :board [[:br :bn :bb :bq :bk :bb :bn :br]
+           [:bp :bp :bp :bp :ee :bp :bp :bp]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:ee :ee :ee :ee :bp :ee :ee :ee]
+           [:ee :ee :ee :ee :wp :ee :ee :ee]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:wp :wp :wp :wp :ee :wp :wp :wp]
+           [:wr :wn :wb :wq :wk :wb :wn :wr]],
+   :white-king-moved false,
+   :black-king-moved false,
+   :turn :white
+   :prev-move :e5
+   },
+
+  {
+   :board [[:br :bn :bb :bq :bk :bb :bn :br]
+           [:bp :bp :bp :bp :bp :bp :bp :bp]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:ee :ee :ee :ee :wp :ee :ee :ee]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:wp :wp :wp :wp :ee :wp :wp :wp]
+           [:wr :wn :wb :wq :wk :wb :wn :wr]],
+   :white-king-moved false,
+   :black-king-moved false,
+   :turn :black
+   :prev-move :e4
+   },
+  {
+   :board [[:br :bn :bb :bq :bk :bb :bn :br]
+           [:bp :bp :bp :bp :ee :bp :bp :bp]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:ee :ee :ee :ee :ee :ee :ee :ee]
+           [:ee :ee :ee :ee :bp :ee :ee :ee]
+           [:wp :wp :wp :wp :wp :wp :wp :wp]
+           [:wr :wn :wb :wq :wk :wb :wn :wr]],
+   :white-king-moved false,
+   :black-king-moved false,
+   :turn :white
+   :prev-move nil
+   }))
 

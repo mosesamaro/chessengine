@@ -6,20 +6,20 @@
 ;; This chess engine application is intended to determine validity of
 ;; moves and board tracking. It does not include a chess AI component
 
-;; (def app-state {
-;;           :board [[:br :bn :bb :bq :bk :bb :bn :br]
-;;                   [:bp :bp :bp :bp :ee :bp :bp :bp]
-;;                   [:ee :ee :ee :ee :ee :ee :ee :ee]
-;;                   [:ee :ee :ee :ee :ee :ee :ee :ee]
-;;                   [:ee :ee :ee :ee :ee :ee :ee :ee]
-;;                   [:ee :ee :ee :ee :bp :ee :ee :ee]
-;;                   [:wp :wp :wp :wp :wp :wp :wp :wp]
-;;                   [:wr :wn :wb :wq :wk :wb :wn :wr]],
-;;           :white-king-moved false,
-;;           :black-king-moved false,
-;;           :turn :white
-;;           :prev-move nil
-;;           })
+(def init-app-state '({
+          :board [[:br :bn :bb :bq :bk :bb :bn :br]
+                  [:bp :bp :bp :bp :ee :bp :bp :bp]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
+                  [:ee :ee :ee :ee :bp :ee :ee :ee]
+                  [:wp :wp :wp :wp :wp :wp :wp :wp]
+                  [:wr :wn :wb :wq :wk :wb :wn :wr]],
+          :white-king-moved false,
+          :black-king-moved false,
+          :turn :white
+          :prev-move nil
+          }))
 
 (def app-state '(
                 {
@@ -54,6 +54,13 @@
                  }
                 ))
 
+(defn column-index [letter]
+"Takes a letter representing a column, returns an index"
+  (get {\a 1, \b 2, \c 3, \d 4, \e 5, \f 6, \g 7, \h 8} letter))
+
+(defn index-column [index]
+  "Takes an index, returns a letter representing a column"
+ (get {1 \a, 2 \b, 3 \c, 4 \d, 5 \e, 6 \f, 7 \g, 8 \h} index))
             
 
 (defn is-in-check [app-state]
@@ -90,6 +97,23 @@ it as a piece, column, row or takes"
   "This function converts all the parts of a chess notation string into lexems where lexems contain a token and type"
   (map notation-token notation))
 
+(defn make-keyword [col row]
+  (if (nil? row)
+    nil
+    (if (nil? col)
+      nil
+      (keyword (str col row)))))
+
+(def make-pos make-keyword)
+(def make-piece make-keyword)
+
+(defn first-keyword-char [piece]
+      (first (name piece)))
+
+(def get-col first-keyword-char)
+
+(def get-side first-keyword-char)
+
 ;;(prn (lex-notation "exd6"))
 
 (defn process-piece-start [tokens res]
@@ -111,19 +135,33 @@ it as a piece, column, row or takes"
 
 (def get-row second-keyword-char)
 
+(defn inc-row [pos]
+        (make-pos 
+         (valid-cols (get-col pos))
+         (valid-rows (inc (Integer/parseInt (str (get-row pos)))))))
+
+
+(defn dec-row[pos]
+        (make-pos 
+         (valid-cols (get-col pos))
+         (valid-rows (dec (Integer/parseInt (str (get-row pos)))))))
+
+(inc-row :e4)
+
+(defn inc-col [pos]
+  (make-pos 
+   (valid-cols (index-column (inc (column-index (get-col pos)))))
+   (valid-rows (Integer/parseInt (str (get-row pos))))))
+
+(defn dec-col [pos]
+  (make-pos 
+   (valid-cols (index-column (dec (column-index (get-col pos)))))
+   (valid-rows (Integer/parseInt (str (get-row pos))))))
+
+;;(defn inc-col [pos]
+
 (def get-piece second-keyword-char)
 
-(get-piece :wb)
-
-(get-row :e4)
-
-(defn first-keyword-char [piece]
-      (first (name piece)))
-
-(def get-col first-keyword-char)
-
-(def get-side first-keyword-char)
-  
 ;;(get-row :e2)
 ;;(conj (pawn-moves app-state {:
 ;; (get-piece-on-pos :e2 app-state)
@@ -140,15 +178,6 @@ it as a piece, column, row or takes"
 (def make-piece make-keyword)
 
 (make-pos \e nil)
-
-(defn column-index [letter]
-"Takes a letter representing a column, returns an index"
-  (get {\a 1, \b 2, \c 3, \d 4, \e 5, \f 6, \g 7, \h 8} letter))
-
-(defn index-column [index]
-  "Takes an index, returns a letter representing a column"
- (get {1 \a, 2 \b, 3 \c, 4 \d, 5 \e, 6 \f, 7 \g, 8 \h} index))
-
 
 (defn get-piece-on-pos [pos board]
 "Takes a square name (ex: a3) and returns the piece on it"
@@ -178,12 +207,12 @@ it as a piece, column, row or takes"
           (or (is-free? app-state pos) 
               (is-enemy? app-state my-side pos))))
 
-(defn up
+(defn step [step-forward step-backward]
   "Takes a position, application state and optional side. Returns the
   pos that resides on the square one up from the piece, from the
   perspective of the given side. If side is not provided, defaults to
   the side of the piece if one exists, or black"
-  [side app-state pos]
+  (fn [side app-state pos]
   (if (nil? pos)
     nil
     (let [piece (get-piece-on-pos pos (:board (peek app-state)))
@@ -191,75 +220,13 @@ it as a piece, column, row or takes"
                  (get-side piece)
                  side)]
       (if (= side \w)
-        (make-pos 
-         (valid-cols (get-col pos))
-         (valid-rows (inc (Integer/parseInt (str (get-row pos))))))
-        (make-pos
-         (valid-cols (get-col pos)) 
-         (valid-rows (dec (Integer/parseInt (str (get-row pos))))))))))
+        (step-forward pos)
+        (step-backward pos))))))
 
-
-(defn down
-  "Takes a position, application state and optional side. Returns the
-  pos that resides on the square one up from the piece, from the
-  perspective of the given side. If side is not provided, defaults to
-  the side of the piece if one exists, or black"
-  [side app-state pos]
-  (if (nil? pos)
-    nil
-    (let [piece (get-piece-on-pos pos (:board (peek app-state)))
-          side (if (= side nil) 
-                 (get-side piece)
-                 side)]
-      (if (= side \w)
-        (make-pos 
-         (valid-cols (get-col pos))
-         (valid-rows (dec (Integer/parseInt (str (get-row pos))))))
-        (make-pos
-         (valid-cols (get-col pos)) 
-         (valid-rows (inc (Integer/parseInt (str (get-row pos))))))))))
-
-(defn right
-  "Similar to up, returns a position that resides on the right of the
-  given position, if side is not provided, defaults to the side of the
-  piece at the given position"
-  [side app-state pos]
-  (if (nil? pos)
-    nil 
-    (let [piece (get-piece-on-pos pos (:board (peek app-state)))
-          side (if (= side nil)
-                 (get-side piece)
-                 side)]
-      (if (= side \w)
-        (make-pos 
-         (valid-cols (index-column (inc (column-index (get-col pos)))))
-         (valid-rows (Integer/parseInt (str (get-row pos)))))
-        (make-pos 
-         (valid-cols (index-column (dec (column-index (get-col pos)))))
-         (valid-rows (Integer/parseInt (str (get-row pos)))))))))
-
-
-(defn left
-  "Similar to up, returns a position that resides on the right of the
-  given position, if side is not provided, defaults to the side of the
-  piece at the given position"
-  [side app-state pos]
-  (if (nil? pos)
-    nil 
-    (let [piece (get-piece-on-pos pos (:board (peek app-state)))
-          side (if (= side nil)
-                 (get-side piece)
-                 side)]
-      (if (= side \w)
-        (make-pos 
-         (valid-cols (index-column (dec (column-index (get-col pos)))))
-         (valid-rows (Integer/parseInt (str (get-row pos)))))
-        (make-pos 
-         (valid-cols (index-column (inc (column-index (get-col pos)))))
-         (valid-rows (Integer/parseInt (str (get-row pos)))))))))
-
-(valid-cols (index-column (dec (column-index (get-col :e3)))))
-(valid-rows (Integer/parseInt (str (get-row :e3))))
+(def up (step inc-row dec-row))
+(def down (step dec-row inc-row))
+(def left (step dec-col dec-col))
+(def right (step inc-col inc-col))
 
 ;; Function which moves in a given direction, by repeatedly 
 ;; executing some function, as long as the squares around it 
@@ -274,8 +241,6 @@ it as a piece, column, row or takes"
 
 (defn path [pos step]
  (take 7 (rest (iterate step pos))))
-
-
 
 (defn passing-pawn-row? [side]
 "passing-paw-rows are rows you need to be on to perform en-passant according to your side"
@@ -542,37 +507,47 @@ wtf
 
 ;;(pawn-moves app-state {:pos "e2" :piece ":wp"})
 
-(defn process-simple-pawn-start [tokens pos res]
-  (assoc res :end-pos pos))
 
-(defn process-pawn-start [tokens pos res]
+;; We recieved a simple pawn start, like :e4
+;; A pawn must have existed one or two columns behind
+;; the destination
+;; Here we get the desired location for a pawn. We know its simple because
+;; of the structure of the command (ex :e4). We're not taking anything. 
+;; We get the desired locatoin and backtrack to see if we can get 
+
+(defn process-simple-pawn-start [tokens pos res app-state]
+   (let [
+         [up down left right] (get-position-functions (:turn (pop app-state)) app-state)
+         one-step-back (-> pos down)
+         two-steps-back (-> pos down down)
+         ]
+     (cond 
+      (= (get-piece-on-pos one-step-back app-state) \p) (assoc res :start-pos one-step-back)
+      (= (get-piece-on-pos two-steps-back app-state) \p) (assoc res :start-pos two-steps-back)
+      :else nil)))
+
+;;(let [   [up down left right] (get-position-functions (:turn (pop app-state)) app-state)
+;;         ]
+;; (-> :e4 down))
+
+     ;; Was there a pawn two squares back, that was on a starting
+   ;; row?
+;;  (assoc res :end-pos pos)
+
+(defn process-pawn-start [tokens pos res app-state]
   "Processes a chess notation section that relates to the movement of a pawn"
   (if (empty? tokens)
-        (process-simple-pawn-start tokens pos res)
+        (process-simple-pawn-start tokens pos res app-state)
       ))
 
-(defn parse-notation [notation]
-  "Parse a notation string into a hash representing a move for easier future processing"
-  (cond (= "O-O" notation) :castle
-        (= "O-O-O" notation) :castle-queenside
-        :else 
-        (let [tokens (lex-notation notation)
-              first-tok (first tokens)
-              ]
-          (cond (= (:type first-tok) :piece)
-                (process-piece-start (rest tokens) {:start-pos ""
-                                                    :piece first-tok
-                                                    :end-pos ""})
-                (= (:type first-tok) :col)
-                (process-pawn-start (rest (rest tokens))
-                                    (apply make-pos (map #(:token %) (take 2 tokens)))
-                                    {:start-pos "", :piece \p, :end-pos ""})
-                :else nil))))
 
-(parse-notation "e5")
-
-
-  
+;; I initially thought that I could do this without having a board, I now
+;; realize that this is not possible. Legal moves can only be determined by 
+;; a move and a board. If the goal of this function is to give validated
+;; board moves to a move function, then it must perform perfect validation
+;; and perfect validation requires a board (really it requires an app-state
+;; which contains multiple boards... this is needed for en-passant checking).
+;;
 ;; Rough notation describing chess notation parsing
 ;; (notation piece-spec | pawn-start)
 ;; (take-pos x pos)
@@ -581,8 +556,7 @@ wtf
 ;; (piece-spec piece-start | piece-start piece-end)
 ;; (piece-start piece pos | piece col)
 ;; (piece-end pos | take-pos)
-
-
+;;
 ;; Rules
 ;; If no piece is specified, its a pawn
 ;; Syntax Variants:
@@ -595,9 +569,26 @@ wtf
 ;; piece pos x pos - piece capture
 ;; O-O indicates castling
 ;; O-O-O indicates queenside castling
-(defn find-notation-target [notation board]
-  "Takes a notation and a board and figures out which piece the notation
-refers to")
+(defn parse-notation [notation app-state]
+  "Parse a notation string into a hash representing a move for easier future processing"
+  (cond (= "O-O" notation) :castle
+        (= "O-O-O" notation) :castle-queenside
+        :else 
+        (let [tokens (lex-notation notation)
+              first-tok (first tokens)
+              ]
+          (cond (= (:type first-tok) :piece)
+                (process-piece-start (rest tokens) {:start-pos ""
+                                                    :piece first-tok
+                                                    :end-pos ""} app-state)
+                (= (:type first-tok) :col)
+                (process-pawn-start (rest (rest tokens))
+                                    (apply make-pos (map #(:token %) (take 2 tokens)))
+                                    {:start-pos "", :piece \p, :end-pos ""}
+                                    app-state)
+                :else nil))))
+
+(parse-notation "e5" app-state)
 
 
 
@@ -606,9 +597,17 @@ refers to")
   "Takes a string containing chess notation, and converts it into a move"
 )
 
-(defn move [app-state move]
-  ;; Function takes an app-state and a move, then returns the 
-  ;; app-state caused by the move, it does some validity checking
-  )
+;; Move, top level interface to the chess engine
+;; takes a move in chess notation format, and an app state. 
+;; if no app-state is provided, it is assumed that we're
+;; dealing with a new game.
+(defn move 
+  ([move app-state]
+     (prn move app-state))
+  ([move]
+     (prn move)))
+
+
+
 
 ;;(get-square "d7" (:board app-state))

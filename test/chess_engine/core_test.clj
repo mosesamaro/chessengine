@@ -6,6 +6,23 @@
   (testing "FIXME, I fail."
     (is (= 1 1))))
 
+
+(def init-tests-state '({
+          :board [[:br :bn :bb :bq :bk :bb :bn :br]
+                  [:bp :bp :bp :bp :bp :bp :bp :bp]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
+                  [:wp :wp :wp :wp :wp :wp :wp :wp]
+                  [:wr :wn :wb :wq :wk :wb :wn :wr]],
+          :white-king-moved false,
+          :black-king-moved false,
+          :turn :white
+          :prev-move nil
+          }))
+
+
 (def basic-tests-state '(
                 {
                  :board [[:br :bn :bb :bq :bk :bb :bn :br]
@@ -123,7 +140,7 @@
 (deftest test-chess-notation-to-move 
   (testing "See if we can correctly convert chess notation into a map based move representation"
     (is (= (lex-notation "e4") '({:token \e, :type :col} {:token \4, :type :row})))
-    (is (= (find-notation-target "e3" (:board app-state)) 
+    (is (= (get-piece-on-pos "e3" (:board app-state)) 
            {:start-pos "e2" :piece :p :end-pos "e3"}))
     (is (= (chess-notation-to-move "e3" (:board app-state)) 
            {:start-pos "e2" :piece :p :end-pos "e3"}))
@@ -305,5 +322,12 @@ knight positions, excluding check handling"
                        }), {:pos :c3, :piece :wn})
      '(:b5 :e4 :a4 :b1))))
 
+(deftest pawn-start-test
+  (is (=  (process-simple-pawn-start "" :e4 { :start-pos "" 
+                                         :piece \p 
+                                         :end-pos "" } basic-tests-state)
+      {:start-pos ""
+       :piece \p
+       :end-pos ""})))
 
 
