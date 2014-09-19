@@ -1,4 +1,5 @@
-(ns chess-engine.core)
+(ns chess-engine.core
+  (:use clojure.core.strint))
 
 
 ;; Introduction
@@ -12,12 +13,12 @@
                   [:ee :ee :ee :ee :ee :ee :ee :ee]
                   [:ee :ee :ee :ee :ee :ee :ee :ee]
                   [:ee :ee :ee :ee :ee :ee :ee :ee]
-                  [:ee :ee :ee :ee :bp :ee :ee :ee]
+                  [:ee :ee :ee :ee :ee :ee :ee :ee]
                   [:wp :wp :wp :wp :wp :wp :wp :wp]
                   [:wr :wn :wb :wq :wk :wb :wn :wr]],
           :white-king-moved false,
           :black-king-moved false,
-          :turn :white
+          :turn \w
           :prev-move nil
           }))
 
@@ -33,7 +34,7 @@
                          [:wr :wn :wb :wq :wk :wb :wn :wr]],
                  :white-king-moved false,
                  :black-king-moved false,
-                 :turn :white
+                 :turn \w
                  :prev-move :c5
                  :move nil
                  },
@@ -48,7 +49,7 @@
                          [:wr :wn :wb :wq :wk :wb :wn :wr]],
                  :white-king-moved false,
                  :black-king-moved false,
-                 :turn :black
+                 :turn \b
                  :prev-move :d5
                  :move nil
                  }
@@ -225,8 +226,8 @@ it as a piece, column, row or takes"
 
 (def up (step inc-row dec-row))
 (def down (step dec-row inc-row))
-(def left (step dec-col dec-col))
-(def right (step inc-col inc-col))
+(def left (step dec-col inc-col))
+(def right (step inc-col dec-col))
 
 ;; Function which moves in a given direction, by repeatedly 
 ;; executing some function, as long as the squares around it 
@@ -247,7 +248,8 @@ it as a piece, column, row or takes"
 (if (= side \w) \5 \4))
 
 (defn get-position-functions [my-side app-state]
-  (map #(partial % my-side app-state) [up down left right]))
+  (do (prn "In get-position-functions" my-side)
+      (map #(partial % my-side app-state) [up down left right])))
 
 ;; Jesus this is harder to do than I originally thought...
 ;; curr-pos is the position of my current piece. 
@@ -265,16 +267,21 @@ it as a piece, column, row or takes"
         ;; right row for en-passant
         on-right-row? (= (get-row curr-pos) (passing-pawn-row? my-side)) 
 
+        left-or-right (if (= (-> curr-pos up left) pos) 
+                        left
+                        right)
+
         ;; The previous move (should be a pawn move onto on of the passing pawn
-         ;; rows)
+        ;; rows)
         prev-move (:prev-move (peek app-state))
 
         ;; Row that pawns start from, according to side
         enemy-starting-row (if (= my-side \w) \7 \2)
         enemy-side (if (= my-side \w) \b \w)
 
-       ;; Check that position is diagnal from current position
-        position-is-diagnal (= pos (-> curr-pos left up))
+        ;; Check that position is diagnal from current position
+        position-is-diagnal (or (= pos (-> curr-pos left up))
+                                (= pos (-> curr-pos right up)))
 
         ;; Check that the previous move put the enemy piece 
         ;; next to our piece
@@ -284,7 +291,17 @@ it as a piece, column, row or takes"
                                   prev-move)
 
         prev-move-match 
-        (or 
+        (do
+          (print 
+           "----En passant stuff ---"
+           "on-right-row?" on-right-row?
+           "left-or-right" left-or-right
+           "prev-move" prev-move
+           "enemy-starting-row" enemy-starting-row
+           "enemy-side" enemy-side
+           "position-is-diagnal" position-is-diagnal
+           "enemy-pawn-is-adjacent" enemy-pawn-is-adjacent)
+          (or 
          (and 
           position-is-diagnal
           enemy-pawn-is-adjacent
@@ -318,7 +335,7 @@ it as a piece, column, row or takes"
      (= (make-pos
               (get-col (-> curr-pos right))
               (passing-pawn-row? my-side))
-             prev-move)))]
+             prev-move))))]
     (do (prn on-right-row? prev-move prev-move-match position-is-diagnal enemy-pawn-is-adjacent prev-move)
         prev-move-match))) ;; End of en-passant
 
@@ -445,8 +462,6 @@ and a unit"
                :move nil
                }), {:pos :f4, :piece :wb})) 
 
-wtf
-
 (def bishop-state '({
                :board [[:br :bn :bb :bq :bk :bb :bn :br]
                        [:ee :bp :ee :bp :ee :bp :bp :bp]
@@ -487,11 +502,14 @@ wtf
       starting-square (= (get-row pos) (if (= side \w) \2 \7))
       [up down left right] (get-position-functions side app-state)
       is-free? (partial is-free? app-state)
-      is-enemy? (partial is-enemy? app-state side)]
+      is-enemy? (partial is-enemy? app-state side)
+      is-en-passant? (partial is-en-passant? app-state side pos)
+      can-move-diagnal #(or (is-enemy? %) (is-en-passant? %))
+      ]
   (concat
-       (take 2 (take-while is-free? (path pos app-state up)))
-       (take 1 (take-while is-enemy? (path pos app-state (comp up left))))
-       (take 1 (take-while is-enemy? (path pos app-state (comp up right)))))))
+       (take 2 (take-while is-free? (path pos up)))
+       (take 1 (take-while can-move-diagnal (path pos (comp up left))))
+       (take 1 (take-while can-move-diagnal (path pos (comp up right)))))))
 
 ;; (let [up (partial up \w app-state)
 ;;       down (partial down \w app-state)        
@@ -505,7 +523,7 @@ wtf
 ;;(up :e3 app-state \b)
 ;;(right :e3 app-state \w)
 
-;;(pawn-moves app-state {:pos "e2" :piece ":wp"})
+(pawn-moves app-state {:pos "e2" :piece ":wp"})
 
 
 ;; We recieved a simple pawn start, like :e4
@@ -517,14 +535,33 @@ wtf
 
 (defn process-simple-pawn-start [tokens pos res app-state]
    (let [
-         [up down left right] (get-position-functions (:turn (pop app-state)) app-state)
+         board (:board (peek app-state))
+         turn (:turn (peek app-state))
+         [up down left right] (get-position-functions turn app-state)
          one-step-back (-> pos down)
+         piece-one-step-back (get-piece-on-pos one-step-back (:board (peek app-state)))
          two-steps-back (-> pos down down)
          ]
-     (cond 
-      (= (get-piece-on-pos one-step-back app-state) \p) (assoc res :start-pos one-step-back)
-      (= (get-piece-on-pos two-steps-back app-state) \p) (assoc res :start-pos two-steps-back)
-      :else nil)))
+     (cond (= (get-piece-on-pos one-step-back board) 
+              (make-piece turn \p))
+           (assoc res :start-pos one-step-back :end-pos pos)
+           (and 
+            (= piece-one-step-back :ee)
+            (= (get-piece-on-pos two-steps-back board)
+              (make-piece turn \p)))
+           (assoc res :start-pos two-steps-back :end-pos pos)
+           :else nil)))
+
+(get-piece-on-pos :e3 (:board (peek init-app-state)))
+
+(process-simple-pawn-start "" :e4 { :start-pos "" 
+                                         :piece \p 
+                                         :end-pos "" } init-app-state)
+
+
+
+(:turn (peek init-app-state))
+
 
 ;;(let [   [up down left right] (get-position-functions (:turn (pop app-state)) app-state)
 ;;         ]
@@ -533,12 +570,25 @@ wtf
      ;; Was there a pawn two squares back, that was on a starting
    ;; row?
 ;;  (assoc res :end-pos pos)
+(defn process-complex-pawn-start [tokens pos res app-state]
+      (let [
+            board (:board (peek app-state))
+            turn (:turn (peek app-state))
+            [up down left right] (get-position-functions turn app-state)
+            col (get-col pos)
+            ]
+        (do 
+          (prn (<< "turn ~{turn} col ~{col}")))))
+
+
 
 (defn process-pawn-start [tokens pos res app-state]
   "Processes a chess notation section that relates to the movement of a pawn"
-  (if (empty? tokens)
-        (process-simple-pawn-start tokens pos res app-state)
-      ))
+  (do 
+    (prn "Process pawn start : tokens " tokens " pos " pos " res " res)
+    (if (empty? tokens)
+      (process-simple-pawn-start tokens pos res app-state)
+      (process-complex-pawn-start tokens pos res app-state))))
 
 
 ;; I initially thought that I could do this without having a board, I now
@@ -588,7 +638,10 @@ wtf
                                     app-state)
                 :else nil))))
 
-(parse-notation "e5" app-state)
+(parse-notation "e4" init-app-state) ;; Simple 
+(parse-notation "exd3" init-app-state) ;; Complex pawn start
+
+
 
 
 
@@ -606,8 +659,3 @@ wtf
      (prn move app-state))
   ([move]
      (prn move)))
-
-
-
-
-;;(get-square "d7" (:board app-state))

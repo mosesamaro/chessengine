@@ -196,14 +196,14 @@
 ;;           } \w :d5 :c5)
 
 
-(def app-state-en-passant '(
+(def app-state-left-en-passant '(
                 {
                  :board [[:br :bn :bb :bq :bk :bb :bn :br]
-                         [:ee :bp :ee :bp :ee :bp :bp :bp]
+                         [:ee :bp :ee :bp :bp :bp :bp :bp]
                          [:bp :ee :ee :ee :ee :ee :ee :ee]
                          [:ee :ee :bp :wp :ee :ee :ee :ee]
                          [:ee :ee :ee :ee :ee :ee :ee :ee]
-                         [:ee :ee :ee :ee :bp :ee :ee :ee]
+                         [:ee :ee :ee :ee :ee :ee :ee :ee]
                          [:wp :wp :wp :ee :wp :wp :wp :wp]
                          [:wr :wn :wb :wq :wk :wb :wn :wr]],
                  :white-king-moved false,
@@ -214,11 +214,11 @@
                  },
                 {
                  :board [[:br :bn :bb :bq :bk :bb :bn :br]
-                         [:ee :bp :bp :bp :ee :bp :bp :bp]
+                         [:ee :bp :bp :bp :bp :bp :bp :bp]
                          [:bp :ee :ee :ee :ee :ee :ee :ee]
                          [:ee :ee :ee :wp :ee :ee :ee :ee]
                          [:ee :ee :ee :ee :ee :ee :ee :ee]
-                         [:ee :ee :ee :ee :bp :ee :ee :ee]
+                         [:ee :ee :ee :ee :ee :ee :ee :ee]
                          [:wp :wp :wp :ee :wp :wp :wp :wp]
                          [:wr :wn :wb :wq :wk :wb :wn :wr]],
                  :white-king-moved false,
@@ -229,14 +229,53 @@
                  }
                 ))
 
-(peek app-state-en-passant)
+(def app-state-right-en-passant '(
+                {
+                 :board [[:br :bn :bb :bq :bk :bb :bn :br]
+                         [:ee :bp :ee :bp :ee :bp :bp :bp]
+                         [:bp :ee :ee :ee :ee :ee :ee :ee]
+                         [:ee :ee :ee :wp :bp :ee :ee :ee]
+                         [:ee :ee :ee :ee :ee :ee :ee :ee]
+                         [:ee :ee :ee :ee :ee :ee :ee :ee]
+                         [:wp :wp :wp :ee :wp :wp :wp :wp]
+                         [:wr :wn :wb :wq :wk :wb :wn :wr]],
+                 :white-king-moved false,
+                 :black-king-moved false,
+                 :turn :white
+                 :prev-move :e5
+                 :move nil
+                 },
+                {
+                 :board [[:br :bn :bb :bq :bk :bb :bn :br]
+                         [:ee :bp :bp :bp :bp :bp :bp :bp]
+                         [:bp :ee :ee :ee :ee :ee :ee :ee]
+                         [:ee :ee :ee :wp :ee :ee :ee :ee]
+                         [:ee :ee :ee :ee :ee :ee :ee :ee]
+                         [:ee :ee :ee :ee :ee :ee :ee :ee]
+                         [:wp :wp :wp :ee :wp :wp :wp :wp]
+                         [:wr :wn :wb :wq :wk :wb :wn :wr]],
+                 :white-king-moved false,
+                 :black-king-moved false,
+                 :turn :black
+                 :prev-move :d5
+                 :move nil
+                 }
+                ))
 
-(deftest pawn-moves-test
+
+;;(peek app-state-en-passant)
+
+(deftest en-passant-left-test
   (testing "Lets see if we can get en-passant working"
-    (is (= (is-en-passant? app-state-en-passant \w :d5 :c6)))))
+    (is (= (is-en-passant? app-state-left-en-passant \w :d5 :c6) true))))
 
 
-(is-en-passant? app-state-en-passant \w :d5 :c6)
+(deftest en-passant-right-test
+  (testing "Lets see if we can get en-passant working to the right"
+    (is (= (is-en-passant? app-state-right-en-passant \w :d5 :e6) true))))
+
+
+(is-en-passant? app-state-right-en-passant \w :d5 :e6)
 
 (deftest bishop-moves-test
 "See if the bishop-move function produces correct possible 
@@ -322,12 +361,31 @@ knight positions, excluding check handling"
                        }), {:pos :c3, :piece :wn})
      '(:b5 :e4 :a4 :b1))))
 
+(def pawn-test-state
+'({
+                       :board [[:br :bn :bb :bq :bk :bb :bn :br]
+                               [:bp :bp :bp :bp :bp :bp :bp :bp]
+                               [:ee :ee :ee :ee :ee :ee :ee :ee]
+                               [:ee :ee :ee :ee :ee :ee :ee :ee]
+                               [:ee :ee :ee :ee :ee :ee :ee :ee]
+                               [:ee :ee :ee :ee :ee :ee :ee :ee]
+                               [:wp :wp :wp :wp :wp :wp :wp :wp]
+                               [:wr :wn :wb :wq :wk :wb :wn :wr]],
+                       :white-king-moved false,
+                       :black-king-moved false,
+                       :turn :white
+                       :prev-move :c5
+                       :move nil
+                       }))
+
 (deftest pawn-start-test
   (is (=  (process-simple-pawn-start "" :e4 { :start-pos "" 
-                                         :piece \p 
-                                         :end-pos "" } basic-tests-state)
-      {:start-pos ""
+                                             :piece \p 
+                                             :end-pos "" } pawn-test-state)
+      {:start-pos :e2
        :piece \p
-       :end-pos ""})))
+       :end-pos :e4})))
+
+(pawn-start-test)
 
 
